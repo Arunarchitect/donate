@@ -2,15 +2,40 @@ const express = require("express");
 const Razorpay = require("razorpay");
 const cors = require("cors");
 const crypto = require("crypto");
+const path = require("path");
+const { createProxyMiddleware } = require("http-proxy-middleware");
 require("dotenv").config();
 
 const app = express();
-const PORT = process.env.PORT;
+const PORT = process.env.PORT || 3001; // Use a default port if PORT is not specified
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cors());
 
+// Serve React app in development mode
+if (process.env.NODE_ENV === "development") {
+  // Proxy requests to the React development server
+  app.use(
+    "/",
+    createProxyMiddleware({
+      target: "http://localhost:3000", // Change this to the actual URL of your React development server
+      changeOrigin: true,
+    })
+  );
+} else {
+  // Serve static files from the build folder in production
+  const buildFolderPath = path.join(__dirname, "/public", "build");
+  app.use(express.static(buildFolderPath));
+
+  // Catch-all route to serve the React app
+  app.get("*", (req, res) => {
+    const indexPath = path.join(buildFolderPath, "index.html");
+    res.sendFile(indexPath);
+  });
+}
+
+// API endpoints
 app.post("/order", async (req, res) => {
   try {
     const razorpay = new Razorpay({
@@ -37,7 +62,6 @@ app.post("/order/validate", async (req, res) => {
     req.body;
 
   const sha = crypto.createHmac("sha256", process.env.RAZORPAY_SECRET);
-  //order_id + "|" + razorpay_payment_id
   sha.update(`${razorpay_order_id}|${razorpay_payment_id}`);
   const digest = sha.digest("hex");
   if (digest !== razorpay_signature) {
