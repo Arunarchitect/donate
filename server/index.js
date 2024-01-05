@@ -1,29 +1,21 @@
 const express = require("express");
+const https = require("https");
+const fs = require("fs");
 const Razorpay = require("razorpay");
 const cors = require("cors");
 const crypto = require("crypto");
 const path = require("path");
-const { createProxyMiddleware } = require("http-proxy-middleware");
 require("dotenv").config();
 
 const app = express();
-const PORT = process.env.PORT || 3001; // Use a default port if PORT is not specified
+const PORT = process.env.PORT || 3001;
 
 // Use CORS middleware for all routes
 app.use(cors());
 
-// Serve React app in development mode
-if (process.env.NODE_ENV === "development") {
-  // Proxy requests to the React development server
-  app.use(
-    "/",
-    createProxyMiddleware({
-      target: "http://localhost:5173", // Change this to the actual URL of your React development server
-      changeOrigin: true,
-    })
-  );
-} else {
-  // Serve static files from the build folder in production
+// Serve React app in production mode over HTTPS
+if (process.env.NODE_ENV === "production") {
+  // Serve static files from the build folder
   const buildFolderPath = path.join(__dirname, "/public", "build");
   app.use(express.static(buildFolderPath));
 
@@ -32,6 +24,24 @@ if (process.env.NODE_ENV === "development") {
     const indexPath = path.join(buildFolderPath, "index.html");
     res.sendFile(indexPath);
   });
+
+  // Configure HTTPS
+  const privateKeyPath = "/etc/letsencrypt/live/api.arunarchitect.in/privkey.pem";
+  const certificatePath = "/etc/letsencrypt/live/api.arunarchitect.in/fullchain.pem";
+
+  if (fs.existsSync(privateKeyPath) && fs.existsSync(certificatePath)) {
+    const privateKey = fs.readFileSync(privateKeyPath, "utf8");
+    const certificate = fs.readFileSync(certificatePath, "utf8");
+    const credentials = { key: privateKey, cert: certificate };
+
+    const httpsServer = https.createServer(credentials, app);
+
+    httpsServer.listen(PORT, () => {
+      console.log("Listening on port", PORT);
+    });
+  } else {
+    console.error("Private key or certificate not found.");
+  }
 }
 
 // API endpoints
@@ -57,8 +67,7 @@ app.post("/order", cors(), async (req, res) => {
 });
 
 app.post("/order/validate", cors(), async (req, res) => {
-  const { razorpay_order_id, razorpay_payment_id, razorpay_signature } =
-    req.body;
+  const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
 
   const sha = crypto.createHmac("sha256", process.env.RAZORPAY_SECRET);
   sha.update(`${razorpay_order_id}|${razorpay_payment_id}`);
@@ -74,6 +83,9 @@ app.post("/order/validate", cors(), async (req, res) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log("Listening on port", PORT);
-});
+// Start the server
+if (process.env.NODE_ENV !== "production") {
+  app.listen(PORT, () => {
+    console.log("Listening on port", PORT);
+  });
+}
