@@ -9,8 +9,7 @@ require("dotenv").config();
 const app = express();
 const PORT = process.env.PORT || 3001; // Use a default port if PORT is not specified
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+// Use CORS middleware for all routes
 app.use(cors());
 
 // Serve React app in development mode
@@ -19,7 +18,7 @@ if (process.env.NODE_ENV === "development") {
   app.use(
     "/",
     createProxyMiddleware({
-      target: "http://localhost:3000", // Change this to the actual URL of your React development server
+      target: "http://localhost:5173", // Change this to the actual URL of your React development server
       changeOrigin: true,
     })
   );
@@ -36,7 +35,7 @@ if (process.env.NODE_ENV === "development") {
 }
 
 // API endpoints
-app.post("/order", async (req, res) => {
+app.post("/order", cors(), async (req, res) => {
   try {
     const razorpay = new Razorpay({
       key_id: process.env.RAZORPAY_KEY_ID,
@@ -57,7 +56,7 @@ app.post("/order", async (req, res) => {
   }
 });
 
-app.post("/order/validate", async (req, res) => {
+app.post("/order/validate", cors(), async (req, res) => {
   const { razorpay_order_id, razorpay_payment_id, razorpay_signature } =
     req.body;
 
