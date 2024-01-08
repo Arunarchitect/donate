@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "nodemon index.js"
+    "startd": "NODE_ENV=development nodemon index.js",
+    "startp": "NODE_ENV=production node index.js"
   },
   "author": "",
   "license": "ISC",
@@ -15,5 +16,8 @@
     "express": "^4.18.2",
     "nodemon": "^3.0.2",
     "razorpay": "^2.9.2"
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3"
   }
 }

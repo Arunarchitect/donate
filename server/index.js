@@ -2,6 +2,7 @@ const express = require("express");
 const Razorpay = require("razorpay");
 const cors = require("cors");
 const crypto = require("crypto");
+const path = require("path"); // Import the path module
 require("dotenv").config();
 
 const app = express();
@@ -10,6 +11,18 @@ const PORT = process.env.PORT;
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cors());
+
+if (process.env.NODE_ENV === "production") {
+  // Serve static files from the build folder
+  const buildFolderPath = path.join(__dirname, "/public", "build");
+  app.use(express.static(buildFolderPath));
+
+  // Catch-all route to serve the React app
+  app.get("*", (req, res) => {
+    const indexPath = path.join(buildFolderPath, "index.html");
+    res.sendFile(indexPath);
+  });
+}
 
 app.post("/order", async (req, res) => {
   try {
